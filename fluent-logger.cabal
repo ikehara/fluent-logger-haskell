@@ -23,7 +23,7 @@ library
   ghc-options:         -Wall
   build-depends:       base ==4.*
                      , bytestring
-                     , network >=2.3.0.13 && <2.5
+                     , network >=2.3.0.13 && <2.6
                      , network-socket-options >=0.1 && <0.3
                      , time
                      , msgpack >=0.7.1 && <0.8
