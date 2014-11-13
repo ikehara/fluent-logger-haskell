@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances, IncoherentInstances, TypeSynonymInstances #-}
+
 --
 -- Copyright (C) 2012 Noriyuki OHKAWA
 --
@@ -29,8 +31,11 @@ module Network.Fluent.Logger
     , postWithTime
     ) where
 
-import qualified Data.ByteString.Char8 as BS ( ByteString, pack, unpack , empty, null )
-import qualified Data.ByteString.Lazy as LBS ( ByteString, length )
+import qualified Data.Vector as V
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.ByteString.Char8 as BS ( ByteString, pack, unpack , empty, null)
+import qualified Data.ByteString.Lazy as LBS ( ByteString, length, toStrict )
 import Data.Monoid ( mconcat )
 import qualified Network.Socket as NS
 import Network.Socket.Options ( setRecvTimeout, setSendTimeout )
@@ -42,10 +47,44 @@ import Control.Concurrent.STM ( atomically
                               , TChan, newTChanIO, readTChan, peekTChan, writeTChan
                               , TVar, newTVarIO, readTVar, modifyTVar )
 import Control.Exception ( SomeException, handle, bracket, throwIO )
-import Data.MessagePack ( Packable, pack )
+import Data.MessagePack
+import Data.Serialize hiding (label)
 import Data.Int ( Int64 )
 import Data.Time.Clock.POSIX ( getPOSIXTime )
 import System.Random ( randomRIO )
+
+class Packable a where
+  pack :: a -> Object
+
+instance Packable Object where
+  pack = id
+
+instance Packable () where
+  pack = const ObjectNil
+
+instance Packable Int where
+  pack = ObjectInt
+
+instance Packable String where
+  pack = ObjectString . T.pack
+
+instance Packable BS.ByteString where
+  pack = ObjectBinary
+
+instance Packable LBS.ByteString where
+  pack = ObjectBinary . LBS.toStrict
+
+instance Packable T.Text where
+  pack = ObjectString
+
+instance Packable LT.Text where
+  pack = ObjectString . T.pack . LT.unpack
+
+instance Packable a => Packable [a] where
+  pack = ObjectArray . map pack
+
+instance Packable a => Packable (V.Vector a) where
+  pack = ObjectArray . map pack . V.toList
 
 -- | Fluent logger settings
 --
@@ -181,7 +220,7 @@ getCurrentEpochTime = round <$> getPOSIXTime
 --
 -- Since 0.1.0.0
 --
-post :: Packable a => FluentLogger -> BS.ByteString -> a -> IO ()
+post :: (Packable a) => FluentLogger -> BS.ByteString -> a -> IO ()
 post logger label obj = do
   time <- getCurrentEpochTime
   postWithTime logger label time obj
@@ -190,13 +229,13 @@ post logger label obj = do
 --
 -- Since 0.1.0.0
 --
-postWithTime :: Packable a => FluentLogger -> BS.ByteString -> Int -> a -> IO ()
+postWithTime :: (Packable a) => FluentLogger -> BS.ByteString -> Int -> a -> IO ()
 postWithTime logger label time obj = atomically send where
     sender = fluentLoggerSender logger
     set = fluentLoggerSenderSettings sender
     tag = fluentSettingsTag set
     lbl = if BS.null label then tag else mconcat [ tag, BS.pack ".", label ]
-    entry = pack ( lbl, time, obj )
+    entry = encodeLazy $ ObjectArray [ObjectBinary lbl, ObjectInt time, pack obj]
     len = LBS.length entry
     chan = fluentLoggerSenderChan sender
     buffered = fluentLoggerSenderBuffered sender
