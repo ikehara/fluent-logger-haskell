@@ -31,6 +31,7 @@ module Network.Fluent.Logger
     , postWithTime
     ) where
 
+import qualified Data.Map as M
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
@@ -85,6 +86,21 @@ instance Packable a => Packable [a] where
 
 instance Packable a => Packable (V.Vector a) where
   pack = ObjectArray . map pack . V.toList
+
+instance (Packable a1, Packable a2) => Packable (a1, a2) where
+  pack (a1, a2) = ObjectArray [pack a1, pack a2]
+
+instance (Packable a1, Packable a2, Packable a3) => Packable (a1, a2, a3) where
+  pack (a1, a2, a3) = ObjectArray [pack a1, pack a2, pack a3]
+
+instance (Packable a1, Packable a2, Packable a3, Packable a4) => Packable (a1, a2, a3, a4) where
+  pack (a1, a2, a3, a4) = ObjectArray [pack a1, pack a2, pack a3, pack a4]
+
+instance (Packable a1, Packable a2, Packable a3, Packable a4, Packable a5) => Packable (a1, a2, a3, a4, a5) where
+  pack (a1, a2, a3, a4, a5) = ObjectArray [pack a1, pack a2, pack a3, pack a4, pack a5]
+
+instance (Packable k, Packable v) => Packable (M.Map k v) where
+  pack = ObjectMap . (M.foldWithKey (\k v -> M.insert (pack k) (pack v)) M.empty)
 
 -- | Fluent logger settings
 --
