@@ -186,7 +186,7 @@ getCurrentEpochTime = round <$> getPOSIXTime
 --
 -- Since 0.1.0.0
 --
-post :: (Packable a) => FluentLogger -> BS.ByteString -> a -> IO ()
+post :: Packable a => FluentLogger -> BS.ByteString -> a -> IO ()
 post logger label obj = do
   time <- getCurrentEpochTime
   postWithTime logger label time obj

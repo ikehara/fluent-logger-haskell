@@ -9,6 +9,6 @@ set = defaultFluentSettings { fluentSettingsTag = "debug"
 
 main :: IO ()
 main = withFluentLogger set $ \logger -> do
-         defaultMain [ bgroup "post" [ bench "1 to 1000" $ nfIO $ mapM_ (post logger "loop") [1..1000 :: Int]
+         defaultMain [ bgroup "post" [ bench "1 to 1000" $ nfIO $ mapM_ (post logger "loop") [1..1000::Int]
                                      ]
                      ]

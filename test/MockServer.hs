@@ -20,6 +20,8 @@ import Data.Serialize (Serialize, get)
 import Data.MessagePack
 import Data.Monoid
 
+import Network.Fluent.Logger.Internal (Unpackable, pack, unpack)
+
 data MockServer a = MockServer { mockServerChan :: Chan a
                                , mockServerThread :: ThreadId
                                }
@@ -46,8 +48,8 @@ sinkChan chan = do
 withMockServer :: Serialize a => (MockServer a -> IO ()) -> IO ()
 withMockServer = bracket runMockServer stopMockServer
 
-recvMockServer :: Serialize a => MockServer a -> IO a
-recvMockServer server = readChan (mockServerChan server)
+recvMockServer :: Unpackable b => MockServer Object -> IO b
+recvMockServer server = fmap unpack $ readChan (mockServerChan server)
 
 runMockServer :: Serialize a => IO (MockServer a)
 runMockServer = do

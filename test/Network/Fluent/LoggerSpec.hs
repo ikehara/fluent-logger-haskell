@@ -45,68 +45,68 @@ postPostsMessage =
       let label = "PostsMessage"
       withMockServer $ \server -> do
         preTime <- getCurrentEpochTime
-        post logger label (ObjectString "test")
+        post logger label ( "test" :: String )
         postTime <- getCurrentEpochTime
-        ObjectArray (tag:time:content:[]) <- recvMockServer server
-        tag `shouldBe` (ObjectBinary "post.PostsMessage")
-        content `shouldBe` (ObjectString "test")
+        (tag, time, content) <- recvMockServer server :: IO (ByteString, Int, String)
+        tag `shouldBe` "post.PostsMessage"
+        content `shouldBe` "test"
 
 postKeepsMessageOrder :: IO ()
 postKeepsMessageOrder =
     withFluentLogger postSettings $ \logger -> do
       let label = "KeepsMessageOrder"
       withMockServer $ \server -> do
-        let xs = map ObjectInt [1..1024::Int]
+        let xs = [1..1024::Int]
         mapM_ (post logger label) xs
         forM_ xs $ \n -> do
-          ObjectArray (_:_:content:[]) <- recvMockServer server
+          (_, _, content) <- recvMockServer server :: IO (ByteString, Int, Int)
           content `shouldBe` n
 
 postBuffersMessageIfServerDown :: IO ()
 postBuffersMessageIfServerDown =
     withFluentLogger postSettings $ \logger -> do
       let label = "BuffersMessageIfServerDown"
-      post logger label (ObjectInt 1)
+      post logger label ( 1 :: Int )
       withMockServer $ \server -> do
-        post logger label (ObjectInt 2)
-        ObjectArray (_:_:content:[]) <- recvMockServer server
-        content `shouldBe` (ObjectInt 1)
-        ObjectArray (_:_:content:[]) <- recvMockServer server
-        content `shouldBe` (ObjectInt 2)
+        post logger label ( 2 :: Int )
+        (_, _, content) <- recvMockServer server :: IO (ByteString, Int, Int)
+        content `shouldBe` 1
+        (_, _, content) <- recvMockServer server :: IO (ByteString, Int, Int)
+        content `shouldBe` 2
 
 postBuffersMessageIfLostConnection :: IO ()
 postBuffersMessageIfLostConnection =
     withFluentLogger postSettings $ \logger -> do
       let label = "BuffersMessageIfLostConnection"
       withMockServer $ \server -> do
-        post logger label (ObjectInt 1)
-        ObjectArray (_:_:content:[]) <- recvMockServer server
-        content `shouldBe` (ObjectInt 1)
-      post logger label (ObjectInt 2)
+        post logger label ( 1 :: Int )
+        (_, _, content) <- recvMockServer server :: IO (ByteString, Int, Int)
+        content `shouldBe` 1
+      post logger label ( 2 :: Int )
       withMockServer $ \server -> do
-        post logger label (ObjectInt 3)
-        ObjectArray (_:_:content:[]) <- recvMockServer server
-        content `shouldBe` (ObjectInt 2)
-        ObjectArray (_:_:content:[]) <- recvMockServer server
-        content `shouldBe` (ObjectInt 3)
+        post logger label ( 3 :: Int )
+        (_, _, content) <- recvMockServer server :: IO (ByteString, Int, Int)
+        content `shouldBe` 2
+        (_, _, content) <- recvMockServer server :: IO (ByteString, Int, Int)
+        content `shouldBe` 3
 
 postLostsMessageIfBufferIsOver :: IO ()
 postLostsMessageIfBufferIsOver =
     withFluentLogger postSettings $ \logger -> do
       let label = "LostsMessageIfBufferIsOver"
-      post logger label (ObjectInt 1)
+      post logger label ( 1 :: Int )
       withMockServer $ \server -> do
-        post logger label (ObjectInt 2)
-        ObjectArray (_:_:content:[]) <- recvMockServer server
-        content `shouldBe` (ObjectInt 2)
+        post logger label ( 2 :: Int )
+        (_, _, content) <- recvMockServer server :: IO (ByteString, Int, Int)
+        content `shouldBe` 2
 
 postWithTimePostsMessageWithGivenTime :: IO ()
 postWithTimePostsMessageWithGivenTime =
     withFluentLogger postWithTimeSettings $ \logger -> do
       let label = "PostsMessageWithGivenTime"
       withMockServer $ \server -> do
-        postWithTime logger label 123456 (ObjectString "test")
-        ObjectArray (tag:time:content:[]) <- recvMockServer server
-        tag `shouldBe` (ObjectBinary "postWithTime.PostsMessageWithGivenTime")
-        time `shouldBe` (ObjectInt 123456)
-        content `shouldBe` (ObjectString "test")
+        postWithTime logger label 123456 ( "test" :: String )
+        (tag, time, content) <- recvMockServer server :: IO (ByteString, Int, String)
+        tag `shouldBe` "postWithTime.PostsMessageWithGivenTime"
+        time `shouldBe` 123456
+        content `shouldBe` "test"

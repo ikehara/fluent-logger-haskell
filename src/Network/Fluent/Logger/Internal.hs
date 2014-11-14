@@ -1,23 +1,10 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, TypeSynonymInstances #-}
-
---
--- Copyright (C) 2012 Noriyuki OHKAWA
---
--- Licensed under the Apache License, Version 2.0 (the "License");
--- you may not use this file except in compliance with the License.
--- You may obtain a copy of the License at
---
---     http://www.apache.org/licenses/LICENSE-2.0
---
--- Unless required by applicable law or agreed to in writing, software
--- distributed under the License is distributed on an "AS IS" BASIS,
--- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
--- See the License for the specific language governing permissions and
--- limitations under the License.
---
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Network.Fluent.Logger.Internal where
 
+import Control.Exception
+import Data.Typeable
 import Data.MessagePack
 import qualified Data.Map as M
 import qualified Data.Vector as V
@@ -25,6 +12,12 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy as LBS
+
+data UnpackError =
+  UnpackError String
+  deriving (Show, Typeable)
+
+instance Exception UnpackError
 
 -- for compatibility with msgpack
 
@@ -76,3 +69,56 @@ instance (Packable a1, Packable a2, Packable a3, Packable a4, Packable a5) => Pa
 instance (Packable k, Packable v) => Packable (M.Map k v) where
   pack = ObjectMap . (M.foldWithKey (\k v -> M.insert (pack k) (pack v)) M.empty)
 
+class Unpackable a where
+  unpack :: Object -> a
+
+instance Unpackable Object where
+  unpack = id
+
+instance Unpackable () where
+  unpack ObjectNil = ()
+  unpack x = throw $ UnpackError $ "invalid for nil: " ++ show x
+
+instance Unpackable Int where
+  unpack (ObjectInt x) = x
+  unpack x = throw $ UnpackError $ "invalid for int: " ++ show x
+
+instance Unpackable String where
+  unpack (ObjectString x) = T.unpack x
+  unpack x = throw $ UnpackError $ "invalid for string: " ++ show x
+
+instance Unpackable BS.ByteString where
+  unpack (ObjectBinary x) = x
+  unpack x = throw $ UnpackError $ "invalid for binary: " ++ show x
+
+instance Unpackable LBS.ByteString where
+  unpack (ObjectBinary x) = LBS.fromStrict x
+  unpack x = throw $ UnpackError $ "invalid for binary: " ++ show x
+
+instance Unpackable T.Text where
+  unpack (ObjectString x) = x
+  unpack x = throw $ UnpackError $ "invalid for string: " ++ show x
+
+instance Unpackable LT.Text where
+  unpack (ObjectString x) = LT.pack . T.unpack $ x
+  unpack x = throw $ UnpackError $ "invalid for string: " ++ show x
+
+instance (Unpackable a1, Unpackable a2) => Unpackable (a1, a2) where
+  unpack (ObjectArray (a1:a2:[])) = (unpack a1, unpack a2)
+  unpack x = throw $ UnpackError $ "invalid for array: " ++ show x
+
+instance (Unpackable a1, Unpackable a2, Unpackable a3) => Unpackable (a1, a2, a3) where
+  unpack (ObjectArray (a1:a2:a3:[])) = (unpack a1, unpack a2, unpack a3)
+  unpack x = throw $ UnpackError $ "invalid for array: " ++ show x
+
+instance (Unpackable a1, Unpackable a2, Unpackable a3, Unpackable a4) => Unpackable (a1, a2, a3, a4) where
+  unpack (ObjectArray (a1:a2:a3:a4:[])) = (unpack a1, unpack a2, unpack a3, unpack a4)
+  unpack x = throw $ UnpackError $ "invalid for array: " ++ show x
+
+instance (Unpackable a1, Unpackable a2, Unpackable a3, Unpackable a4, Unpackable a5) => Unpackable (a1, a2, a3, a4, a5) where
+  unpack (ObjectArray (a1:a2:a3:a4:a5:[])) = (unpack a1, unpack a2, unpack a3, unpack a4, unpack a5)
+  unpack x = throw $ UnpackError $ "invalid for array: " ++ show x
+
+instance (Ord k, Unpackable k, Unpackable v) => Unpackable (M.Map k v) where
+  unpack (ObjectMap x) = M.foldWithKey (\k v -> M.insert (unpack k) (unpack v)) M.empty x
+  unpack x = throw $ UnpackError $ "invalid for map: " ++ show x
