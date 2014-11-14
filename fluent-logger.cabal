@@ -20,6 +20,7 @@ source-repository head
 library
   hs-source-dirs:      src
   exposed-modules:     Network.Fluent.Logger
+                     , Network.Fluent.Logger.Internal
   ghc-options:         -Wall
   build-depends:       base ==4.*
                      , bytestring
