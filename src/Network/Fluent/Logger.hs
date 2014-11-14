@@ -29,8 +29,6 @@ module Network.Fluent.Logger
     , postWithTime
     ) where
 
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as LT
 import qualified Data.ByteString.Char8 as BS ( ByteString, pack, unpack, empty, null)
 import qualified Data.ByteString.Lazy as LBS ( ByteString, length )
 import Data.Monoid ( mconcat )
@@ -201,7 +199,7 @@ postWithTime logger label time obj = atomically send where
     set = fluentLoggerSenderSettings sender
     tag = fluentSettingsTag set
     lbl = if BS.null label then tag else mconcat [ tag, BS.pack ".", label ]
-    entry = encodeLazy $ ObjectArray [ObjectBinary lbl, ObjectInt time, pack obj]
+    entry = encodeLazy $ ObjectArray [ObjectBinary lbl, ObjectInt (fromIntegral time), pack obj]
     len = LBS.length entry
     chan = fluentLoggerSenderChan sender
     buffered = fluentLoggerSenderBuffered sender

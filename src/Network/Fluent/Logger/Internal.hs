@@ -31,7 +31,7 @@ instance Packable () where
   pack = const ObjectNil
 
 instance Packable Int where
-  pack = ObjectInt
+  pack = ObjectInt . fromIntegral
 
 instance Packable String where
   pack = ObjectString . T.pack
@@ -80,7 +80,7 @@ instance Unpackable () where
   unpack x = throw $ UnpackError $ "invalid for nil: " ++ show x
 
 instance Unpackable Int where
-  unpack (ObjectInt x) = x
+  unpack (ObjectInt x) = fromIntegral x
   unpack x = throw $ UnpackError $ "invalid for int: " ++ show x
 
 instance Unpackable String where
